@@ -1,0 +1,3 @@
+#!/bin/sh
+
+apt install wget time build-essential flex bison libssl-dev libelf-dev debhelper rsync

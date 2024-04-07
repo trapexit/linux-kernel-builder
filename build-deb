@@ -1,0 +1,42 @@
+#!/bin/sh
+
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <version>"
+    exit 0
+fi
+
+VERSION="$1"
+FILENAME="linux-${VERSION}.tar.gz"
+URL="https://cdn.kernel.org/pub/linux/kernel/v6.x/${FILENAME}"
+URL_TESTING="https://git.kernel.org/torvalds/t/${FILENAME}"
+
+
+if [ ! -e "${FILENAME}" ]; then
+    wget --continue "${URL}"
+    if [ $? -ne 0 ]; then
+        wget --continue "${URL_TESTING}"
+    fi
+    tar xvf "${FILENAME}"
+fi
+
+cd "linux-${VERSION}"
+if [ -e "/proc/config.gz" ]; then
+    zcat "/proc/config.gz" > ".config"
+else
+    cp -n -v "/boot/config-$(uname -r)" ".config"
+fi    
+
+scripts/config --disable DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
+scripts/config --disable SYSTEM_REVOCATION_KEYS
+scripts/config --disable SYSTEM_TRUSTED_KEYS
+scripts/config --set-val  DEBUG_INFO_DWARF5     n
+scripts/config --set-val  DEBUG_INFO_NONE       y
+scripts/config --undefine DEBUG_INFO
+scripts/config --undefine DEBUG_INFO_COMPRESSED
+scripts/config --undefine DEBUG_INFO_NONE
+scripts/config --undefine DEBUG_INFO_REDUCED
+scripts/config --undefine DEBUG_INFO_SPLIT
+scripts/config --undefine GDB_SCRIPTS
+
+make olddefconfig
+time -v make -j$(nproc) LOCALVERSION=-custom bindeb-pkg
